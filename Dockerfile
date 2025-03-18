@@ -10,6 +10,7 @@ RUN pip install poetry==1.6.1
 COPY pyproject.toml ./
 COPY src/ ./src/
 COPY .env ./.env
+COPY README.md ./README.md
 
 # 配置poetry不创建虚拟环境，直接安装到系统环境
 RUN poetry config virtualenvs.create false \
