@@ -90,7 +90,7 @@ def technical_analyst_agent(state: AgentState):
             "strategy_signals": {
                 "trend_following": {
                     "signal": trend_signals["signal"],
-                    "confidence": round(trend_signals["confidence"] * 100),
+                    "confidence": round(trend_signals["confidence"] * 100) if not np.isnan(trend_signals["confidence"]) else 0,
                     "metrics": normalize_pandas(trend_signals["metrics"]),
                 },
                 "mean_reversion": {
