@@ -11,4 +11,15 @@ services:
       - ./src:/app/src
     env_file:
       - .env
-    restart: unless-stopped 
+    restart: unless-stopped
+    networks:
+      1panel-network:
+        ipv4_address: 172.18.9.9
+      bridge:
+        ipv4_address: 172.17.9.9
+
+networks:
+  1panel-network:
+    external: true
+  bridge:
+    external: true 
