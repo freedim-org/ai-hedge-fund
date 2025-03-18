@@ -21,7 +21,7 @@ TASK_ID = None
 def get_analysts():
     """获取可用的分析师列表"""
     try:
-        response = requests.get("http://localhost:8000/api/analysts")
+        response = requests.get("http://192.168.31.168:8000/api/analysts")
         return response.json()["analysts"]
     except Exception as e:
         console.print(f"[bold red]获取分析师列表失败: {str(e)}[/bold red]")
@@ -30,8 +30,8 @@ def get_analysts():
 def get_models():
     """获取可用的模型列表"""
     try:
-        response = requests.get("http://localhost:8000/api/models")
-        return [model["name"] for model in response.json()["models"]]
+        response = requests.get("http://192.168.31.168:8000/api/models")
+        return [model["model_name"] for model in response.json()["models"]]
     except Exception as e:
         console.print(f"[bold red]获取模型列表失败: {str(e)}[/bold red]")
         return ["gpt-4o"]  # 默认模型
@@ -50,7 +50,7 @@ def start_analysis(tickers, analysts, model_name, model_provider="OpenAI"):
         console.print(Panel(f"[bold]启动分析任务[/bold]\n股票: {', '.join(tickers)}\n分析师: {', '.join(analysts)}\n模型: {model_name} ({model_provider})", 
                            title="任务信息", border_style="blue"))
         
-        response = requests.post("http://localhost:8000/api/analysis", json=data)
+        response = requests.post("http://192.168.31.168:8000/api/analysis", json=data)
         if response.status_code != 200:
             console.print(f"[bold red]启动分析失败: {response.text}[/bold red]")
             return None
@@ -59,7 +59,7 @@ def start_analysis(tickers, analysts, model_name, model_provider="OpenAI"):
         console.print(f"[bold green]分析任务已启动，任务ID: {task_id}[/bold green]")
         return task_id
     except Exception as e:
-        console.print(f"[bold red]启动分析发生错误: {str(e)}[/bold red]")
+        console.print(f"[bold red]启动分析发生错误: {str(e)} {tickers} {analysts} {model_name} {model_provider}[/bold red]")
         return None
 
 def listen_for_events(task_id):
@@ -82,53 +82,85 @@ def listen_for_events(task_id):
             task = progress.add_task("[cyan]分析进度...", total=100)
             
             # 连接到事件流
-            url = f"http://localhost:8000/api/events/{task_id}"
-            client = SSEClient(url)
+            url = f"http://192.168.31.168:8000/api/events/{task_id}"
             
-            for event in client:
-                if event.event == "ping":
-                    # 忽略ping事件
+            # 使用 requests 的 Session 对象和 Response.iter_lines 方法手动处理 SSE
+            session = requests.Session()
+            response = session.get(url, stream=True)
+            
+            # 确保响应状态码正确
+            if response.status_code != 200:
+                console.print(f"[bold red]连接事件流失败: {response.text}[/bold red]")
+                return
+                
+            # 手动解析 SSE 事件
+            event_type = None
+            data_buffer = []
+            
+            for line in response.iter_lines():
+                if not line:
+                    # 空行表示事件结束
+                    if event_type and data_buffer:
+                        # 处理事件
+                        event_data = "".join(data_buffer)
+
+                        #console.print(f"[bold blue] {event_type} 事件数据: {event_data}[/bold blue]")
+                        
+                        # 处理不同类型的事件
+                        if event_type == "ping":
+                            # 忽略ping事件
+                            pass
+                        elif event_type == "end":
+                            console.print("[bold green]任务完成，事件流已关闭[/bold green]")
+                            break
+                        elif event_type == "error":
+                            console.print(f"[bold red]事件流错误: {event_data}[/bold red]")
+                            break
+                        elif event_type == "update":
+                            try:
+                                data = json.loads(event_data)
+                                status = data.get("status", "unknown")
+                                progress_value = data.get("progress", 0)
+                                message_data = data.get("data", {})
+                                
+                                # 更新进度条
+                                progress.update(task, completed=progress_value, description=f"[cyan]{status}")
+                                
+                                # 如果有消息，显示它
+                                if isinstance(message_data, dict) and "message" in message_data:
+                                    console.print(f"[yellow]{message_data['message']}[/yellow]")
+                                    
+                                # 如果分析完成，显示结果
+                                if status == "completed" and "results" in message_data:
+                                    display_results(message_data["results"])
+                            except json.JSONDecodeError:
+                                console.print(f"[bold red]无法解析事件数据: {event_data}[/bold red]")
+                        
+                        # 重置事件缓冲区
+                        event_type = None
+                        data_buffer = []
                     continue
-                    
-                if event.event == "end":
-                    console.print("[bold green]任务完成，事件流已关闭[/bold green]")
-                    break
-                    
-                if event.event == "error":
-                    console.print(f"[bold red]事件流错误: {event.data}[/bold red]")
-                    break
-                    
-                if event.event == "update":
-                    try:
-                        data = json.loads(event.data)
-                        status = data.get("status", "unknown")
-                        progress_value = data.get("progress", 0)
-                        message_data = data.get("data", {})
-                        
-                        # 更新进度条
-                        progress.update(task, completed=progress_value, description=f"[cyan]{status}")
-                        
-                        # 如果有消息，显示它
-                        if isinstance(message_data, dict) and "message" in message_data:
-                            console.print(f"[yellow]{message_data['message']}[/yellow]")
-                            
-                        # 如果分析完成，显示结果
-                        if status == "completed" and "results" in message_data:
-                            display_results(message_data["results"])
-                    except json.JSONDecodeError:
-                        console.print(f"[bold red]无法解析事件数据: {event.data}[/bold red]")
-                        
+                
+                # 解码行内容
+                line = line.decode('utf-8')
+                
+                # 解析事件类型和数据
+                if line.startswith('event:'):
+                    event_type = line.split(':', 1)[1].strip()
+                elif line.startswith('data:'):
+                    data_buffer.append(line.split(':', 1)[1].strip())
+            
     except KeyboardInterrupt:
         console.print("[bold yellow]用户中断，正在取消任务...[/bold yellow]")
         cancel_task(task_id)
         
     except Exception as e:
         console.print(f"[bold red]监听事件时发生错误: {str(e)}[/bold red]")
-        
+
 def cancel_task(task_id):
     """取消分析任务"""
     try:
-        response = requests.delete(f"http://localhost:8000/api/analysis/{task_id}")
+        response = requests.delete(f"http://192.168.31.168:8000/api/analysis/{task_id}")
         if response.status_code == 200:
             console.print(f"[bold yellow]任务 {task_id} 已取消[/bold yellow]")
         else:
@@ -176,7 +208,7 @@ def main():
         if not available_analysts:
             console.print("[bold red]无法获取分析师列表，请手动指定分析师[/bold red]")
             return
-        args.analysts = available_analysts[:2]  # 默认使用前两个分析师
+        args.analysts = [item[1] for item in available_analysts]
     
     # 检查模型是否可用
     available_models = get_models()
@@ -187,8 +219,7 @@ def main():
     task_id = start_analysis(args.tickers, args.analysts, args.model, args.provider)
     if not task_id:
         return
-    console.print(f"[bold green]启动分析任务成功，任务ID: {task_id}[/bold green]")
-
+    
     # 监听事件
     try:
         listen_for_events(task_id)

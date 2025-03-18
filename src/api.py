@@ -12,7 +12,7 @@ from datetime import datetime
 # 导入项目现有的模块
 from main import run_hedge_fund
 from utils.analysts import ANALYST_ORDER, ANALYST_ID_ORDER
-from llm.models import LLM_ORDER, LLM_NAME_ORDER
+from llm.models import LLM_ORDER, LLM_NAME_ORDER, LLM_LIST_ORDER
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -76,6 +76,7 @@ async def update_task_status(task_id: str, status: str, progress: int = None, da
     
     # 如果状态为完成或失败，添加完成事件
     if status in ["completed", "failed"]:
+        await asyncio.sleep(1)
         await task_info["queue"].put({"event": "end"})
 
 # 执行分析的后台任务
@@ -114,6 +115,7 @@ async def run_analysis_task(task_id: str, analysis_request: AnalysisRequest):
         await asyncio.sleep(1)  # 模拟一些处理时间
         
         # 完成分析
+
         await update_task_status(task_id, "completed", 100, {"results": result})
         logger.info(f"分析任务 {task_id} 已完成")
         
@@ -198,7 +200,7 @@ async def get_analysts():
 # 获取可用的模型列表
 @app.get("/api/models")
 async def get_models():
-    return {"models": LLM_ORDER}
+    return {"models": LLM_LIST_ORDER}
 
 # EventSource端点实现
 @app.get("/api/events/{task_id}")
