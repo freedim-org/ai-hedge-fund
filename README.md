@@ -55,7 +55,14 @@ cd ai-hedge-fund
 
 1. Install Poetry (if not already installed):
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
+# conda 创建3.10版本
+# 创建 Python 3.10 环境
+conda create -n ai-hedge-fund python=3.10
+
+# 激活环境
+conda activate ai-hedge-fund
+
+pip install poetry
 ```
 
 2. Install dependencies:
@@ -114,7 +121,7 @@ poetry run python src/main.py --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --
 ### Running the Backtester
 
 ```bash
-poetry run python src/backtester.py --ticker AAPL,MSFT,NVDA
+poetry run python src/main.py --ticker  JD --start-date 2025-03-17 --end-date 2025-03-21
 ```
 
 **Example Output:**
