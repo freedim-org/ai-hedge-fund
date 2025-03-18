@@ -171,11 +171,12 @@ if __name__ == "__main__":
     # Parse tickers from comma-separated string
     tickers = [ticker.strip() for ticker in args.tickers.split(",")]
 
-    # Select analysts
+    # Select analysts - 默认全选所有分析师
     selected_analysts = None
+    all_analysts = [value for _, value in ANALYST_ORDER]
     choices = questionary.checkbox(
         "Select your AI analysts.",
-        choices=[questionary.Choice(display, value=value) for display, value in ANALYST_ORDER],
+        choices=[questionary.Choice(display, value=value, checked=True) for display, value in ANALYST_ORDER],
         instruction="\n\nInstructions: \n1. Press Space to select/unselect analysts.\n2. Press 'a' to select/unselect all.\n3. Press Enter when done to run the hedge fund.\n",
         validate=lambda x: len(x) > 0 or "You must select at least one analyst.",
         style=questionary.Style(
@@ -192,8 +193,8 @@ if __name__ == "__main__":
         print("\n\nInterrupt received. Exiting...")
         sys.exit(0)
     else:
-        selected_analysts = choices
-        print(f"\nSelected analysts: {', '.join(Fore.GREEN + choice.title().replace('_', ' ') + Style.RESET_ALL for choice in choices)}\n")
+        selected_analysts = choices if choices else all_analysts
+        print(f"\nSelected analysts: {', '.join(Fore.GREEN + choice.title().replace('_', ' ') + Style.RESET_ALL for choice in selected_analysts)}\n")
 
     # Select LLM model
     model_choice = questionary.select(

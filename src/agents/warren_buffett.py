@@ -388,7 +388,20 @@ def generate_buffett_output(
     model_name: str,
     model_provider: str,
 ) -> WarrenBuffettSignal:
-    """Get investment decision from LLM with Buffett's principles"""
+    """
+    Get investment decision from LLM with Buffett's principles
+
+    您是沃伦·巴菲特的 AI 代理。根据沃伦·巴菲特的原则决定投资信号：
+    - 能力圈：只投资您了解的企业
+    - 安全边际（> 30%）：以低于内在价值的大幅折扣购买
+    - 经济护城河：寻找持久的竞争优势
+    - 质量管理：寻找保守、以股东为导向的团队
+    - 财务实力：青睐低负债、强劲的股本回报率
+    - 长期视野：投资企业，而不仅仅是股票
+    - 仅在基本面恶化或估值远远超过内在价值时出售
+
+    严格遵循这些准则。
+    """
     template = ChatPromptTemplate.from_messages(
         [
             (

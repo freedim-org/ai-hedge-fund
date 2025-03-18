@@ -12,6 +12,7 @@ from utils.llm import call_llm
 class PortfolioDecision(BaseModel):
     action: Literal["buy", "sell", "short", "cover", "hold"]
     quantity: int = Field(description="Number of shares to trade")
+    position_ratio: int = Field(description="The percentage you want to sell or buy")
     confidence: float = Field(description="Confidence in the decision, between 0.0 and 100.0")
     reasoning: str = Field(description="Reasoning for the decision")
 
@@ -97,7 +98,43 @@ def generate_trading_decision(
     model_name: str,
     model_provider: str,
 ) -> PortfolioManagerOutput:
-    """Attempts to get a decision from the LLM with retry logic"""
+    """
+    Attempts to get a decision from the LLM with retry logic
+
+    您是一名投资组合经理，根据多个股票代码做出最终交易决策。
+
+    交易规则：
+    - 对于多头仓位：
+    * 仅在您有可用现金时才买入
+    * 仅在您目前持有该股票的多头股票时才卖出
+    * 卖出数量必须≤当前多头仓位股数
+    * 买入数量必须≤该股票的最大股份数
+
+    - 对于空头仓位：
+    * 仅在您有可用保证金时才做空（需要仓位价值的 50%）
+    * 仅在您目前持有该股票的空头股票时才补仓
+    * 补仓数量必须≤当前空头仓位股数
+    * 空头数量必须符合保证金要求
+
+    - max_shares 值是预先计算的，以符合仓位限制
+    - 根据信号考虑多头和空头机会
+    - 在多头和空头敞口下保持适当的风险管理
+
+    可用操作：
+    - “买入”：开仓或增加多头仓位
+    - “卖出”：平仓或减少多头仓位
+    - “空头”：开仓或增加空头仓位
+    - “补仓”：平仓或减少空头仓位
+    - “持有”：无操作
+
+    输入：
+    - signals_by_ticker：股票 → 信号的字典
+    - max_shares：每个股票代码允许的最大股票数量
+    - portfolio_cash：投资组合中的当前现金
+    - portfolio_positions：当前头寸（多头和空头）
+    - current_prices：每个股票代码的当前价格
+    - margin_requirement：空头头寸的当前保证金要求
+    """
     # Create the prompt template
     template = ChatPromptTemplate.from_messages(
         [
@@ -136,6 +173,14 @@ def generate_trading_decision(
               - portfolio_positions: current positions (both long and short)
               - current_prices: current prices for each ticker
               - margin_requirement: current margin requirement for short positions
+
+              Outputs:
+              - decisions: dictionary of ticker → trading decisions
+              - action: buy or sell or short or cover or hold
+              - quantity: number of shares to trade
+              - position_ratio: the percentage you want to sell or buy
+              - confidence: confidence in the decision, between 0.0 and 100.0
+              - reasoning: reasoning for the decision
               """,
             ),
             (
@@ -161,6 +206,7 @@ def generate_trading_decision(
                   "TICKER1": {{
                     "action": "buy/sell/short/cover/hold",
                     "quantity": integer,
+                    "position_ratio": integer percentage,
                     "confidence": float between 0 and 100,
                     "reasoning": "string"
                   }},
@@ -191,4 +237,9 @@ def generate_trading_decision(
     def create_default_portfolio_output():
         return PortfolioManagerOutput(decisions={ticker: PortfolioDecision(action="hold", quantity=0, confidence=0.0, reasoning="Error in portfolio management, defaulting to hold") for ticker in tickers})
 
-    return call_llm(prompt=prompt, model_name=model_name, model_provider=model_provider, pydantic_model=PortfolioManagerOutput, agent_name="portfolio_management_agent", default_factory=create_default_portfolio_output)
+    result = call_llm(prompt=prompt, model_name=model_name, model_provider=model_provider, pydantic_model=PortfolioManagerOutput, agent_name="portfolio_management_agent", default_factory=create_default_portfolio_output)
+
+    # Print the result
+    print("portfolio_management_agent", result)
+
+    return result

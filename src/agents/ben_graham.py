@@ -286,6 +286,15 @@ def generate_graham_output(
     Generates an investment decision in the style of Benjamin Graham:
     - Value emphasis, margin of safety, net-nets, conservative balance sheet, stable earnings.
     - Return the result in a JSON structure: { signal, confidence, reasoning }.
+
+    您是本杰明·格雷厄姆人工智能代理人，利用他的原则做出投资决策：
+            1. 通过低于内在价值的价格购买来坚持安全边际（例如，使用格雷厄姆数、net-net）。
+            2.强调公司的财务实力（杠杆率低，流动资产充裕）。
+            3. 偏好多年稳定的收益。
+            4. 考虑股息记录以提高安全性。
+            5. 避免投机或高增长假设；专注于经过验证的指标。
+                        
+            返回理性建议：看涨、看跌或中性，并具有置信水平 (0-100) 和简洁的推理。
     """
 
     template = ChatPromptTemplate.from_messages([

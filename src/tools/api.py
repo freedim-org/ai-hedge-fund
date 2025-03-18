@@ -16,9 +16,21 @@ from data.models import (
     InsiderTradeResponse,
 )
 
+from typing import Union
+import json
+
 # Global cache instance
 _cache = get_cache()
 
+def response_json(response: requests.Response) -> Union[dict, list]:
+    """Parse the response JSON."""
+    try:
+        # 响应中可能有 NaN 值，使用 parse_constant 参数来忽略这些值
+        data = json.loads(response.text, parse_constant=lambda x: None)
+        return data
+    except Exception as e:
+        txt = response.text
+        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {txt}") from e
 
 def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
     """Fetch price data from cache or API."""
@@ -37,10 +49,10 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
     url = f"https://api.financialdatasets.ai/prices/?ticker={ticker}&interval=day&interval_multiplier=1&start_date={start_date}&end_date={end_date}"
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
-        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+        raise Exception(f"Error fetching {url} get prices: {ticker} - {response.status_code} - {response.text}")
 
     # Parse response with Pydantic model
-    price_response = PriceResponse(**response.json())
+    price_response = PriceResponse(**response_json(response))
     prices = price_response.prices
 
     if not prices:
@@ -77,7 +89,7 @@ def get_financial_metrics(
         raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
 
     # Parse response with Pydantic model
-    metrics_response = FinancialMetricsResponse(**response.json())
+    metrics_response = FinancialMetricsResponse(**response_json(response))
     # Return the FinancialMetrics objects directly instead of converting to dict
     financial_metrics = metrics_response.financial_metrics
 
@@ -114,11 +126,15 @@ def search_line_items(
     response = requests.post(url, headers=headers, json=body)
     if response.status_code != 200:
         raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
-    data = response.json()
-    response_model = LineItemResponse(**data)
-    search_results = response_model.search_results
-    if not search_results:
-        return []
+    try:
+        data = response_json(response)
+        response_model = LineItemResponse(**data)
+        search_results = response_model.search_results
+        if not search_results:
+            return []
+    except Exception as e:
+        txt = response.text
+        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {txt}") from e
 
     # Cache the results
     return search_results[:limit]
@@ -159,7 +175,7 @@ def get_insider_trades(
         if response.status_code != 200:
             raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
         
-        data = response.json()
+        data = response_json(response)
         response_model = InsiderTradeResponse(**data)
         insider_trades = response_model.insider_trades
         
@@ -222,7 +238,7 @@ def get_company_news(
         if response.status_code != 200:
             raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
         
-        data = response.json()
+        data = response_json(response)
         response_model = CompanyNewsResponse(**data)
         company_news = response_model.news
         

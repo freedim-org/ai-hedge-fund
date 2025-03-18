@@ -74,6 +74,7 @@ def print_trading_output(result: dict) -> None:
         decision_data = [
             ["Action", f"{action_color}{action}{Style.RESET_ALL}"],
             ["Quantity", f"{action_color}{decision.get('quantity')}{Style.RESET_ALL}"],
+            ["Position Ratio", f"{action_color}{decision.get('position_ratio')}%{Style.RESET_ALL}"],
             [
                 "Confidence",
                 f"{Fore.YELLOW}{decision.get('confidence'):.1f}%{Style.RESET_ALL}",
@@ -103,6 +104,7 @@ def print_trading_output(result: dict) -> None:
                 f"{Fore.CYAN}{ticker}{Style.RESET_ALL}",
                 f"{action_color}{action}{Style.RESET_ALL}",
                 f"{action_color}{decision.get('quantity')}{Style.RESET_ALL}",
+                f"{action_color}{decision.get('position_ratio')}%{Style.RESET_ALL}",
                 f"{Fore.YELLOW}{decision.get('confidence'):.1f}%{Style.RESET_ALL}",
             ]
         )
@@ -110,7 +112,7 @@ def print_trading_output(result: dict) -> None:
     print(
         tabulate(
             portfolio_data,
-            headers=[f"{Fore.WHITE}Ticker", "Action", "Quantity", "Confidence"],
+            headers=[f"{Fore.WHITE}Ticker", "Action", "Quantity", "Position Ratio", "Confidence"],
             tablefmt="grid",
             colalign=("left", "center", "right", "right"),
         )
