@@ -15,8 +15,6 @@ services:
     networks:
       1panel-network:
         ipv4_address: 172.18.9.9
-      bridge:
-        ipv4_address: 172.17.9.9
 
 networks:
   1panel-network:
