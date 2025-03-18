@@ -11,8 +11,8 @@ from datetime import datetime
 
 # 导入项目现有的模块
 from main import run_hedge_fund
-from utils.analysts import ANALYST_ORDER
-from llm.models import LLM_ORDER
+from utils.analysts import ANALYST_ORDER, ANALYST_ID_ORDER
+from llm.models import LLM_ORDER, LLM_NAME_ORDER
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -135,12 +135,11 @@ async def start_analysis(analysis_request: AnalysisRequest, background_tasks: Ba
     
     # 验证分析师列表
     for analyst in analysis_request.analysts:
-        if analyst not in ANALYST_ORDER:
+        if analyst not in ANALYST_ID_ORDER:
             raise HTTPException(status_code=400, detail=f"未知分析师: {analyst}")
     
     # 验证模型
-    available_models = [model["name"] for model in LLM_ORDER]
-    if analysis_request.model_name not in available_models:
+    if analysis_request.model_name not in LLM_NAME_ORDER:
         raise HTTPException(status_code=400, detail=f"未支持的模型: {analysis_request.model_name}")
     
     # 创建任务ID

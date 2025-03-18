@@ -187,7 +187,8 @@ def main():
     task_id = start_analysis(args.tickers, args.analysts, args.model, args.provider)
     if not task_id:
         return
-    
+    console.print(f"[bold green]启动分析任务成功，任务ID: {task_id}[/bold green]")
+
     # 监听事件
     try:
         listen_for_events(task_id)
